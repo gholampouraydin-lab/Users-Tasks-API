@@ -10,6 +10,51 @@ tags:
   - name: Users
   - name: Tasks
 paths:
+  /api/auth/register:
+    post:
+      tags: [Users]
+      summary: Register a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8, format: password }
+      responses:
+        '201': { description: User registered; returns public user and JWT }
+        '400': { description: Invalid input }
+        '409': { description: Email already exists }
+  /api/auth/login:
+    post:
+      tags: [Users]
+      summary: Login and receive a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        '200': { description: Login successful; returns public user and JWT }
+        '401': { description: Invalid credentials }
+  /api/auth/me:
+    get:
+      tags: [Users]
+      summary: Get current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: Current user }
+        '401': { description: Authentication required }
   /api/users:
     get:
       tags: [Users]
@@ -134,12 +179,17 @@ paths:
           description: Authentication required
         '404':
           description: Task not found
-  /api/users/{id}/tasks:
+  /api/tasks/user/{userId}:
     parameters:
-      - $ref: '#/components/parameters/Id'
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
     get:
       tags: [Tasks]
-      summary: List tasks belonging to a user
+      summary: List tasks belonging to the authenticated user
       responses:
         '200':
           description: User tasks returned
