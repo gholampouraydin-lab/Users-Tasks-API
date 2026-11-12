@@ -1,121 +1,92 @@
-# قرارداد اولیه API (API Contract)
+# قرارداد API (مطابق پیاده‌سازی)
 
-## ۱. منابع پروژه
+پایه مسیرها: `/api` — قالب داده: JSON.
 
-### User
-| فیلد | نوع | توضیح |
-|---|---|---|
-| id | integer | شناسه یکتا |
-| name | string | نام کاربر |
-| email | string | ایمیل یکتا |
-| passwordHash | string | هش رمز عبور؛ فقط در پایگاه داده |
+## منابع
+- **User**: `id`, `name`, `email`, `passwordHash` (فقط در پایگاه داده)
+- **Task**: `id`, `title`, `description`, `status`, `userId`, `createdAt`, `updatedAt`
 
-### Task
-| فیلد | نوع | توضیح |
-|---|---|---|
-| id | integer | شناسه یکتا |
-| title | string | عنوان وظیفه |
-| description | string | توضیحات |
-| status | string | یکی از pending, in_progress, completed |
-| userId | integer | شناسه کاربر مالک وظیفه (کلید خارجی) |
+هر کاربر می‌تواند چند وظیفه داشته باشد (One-to-Many). هر وظیفه به مالک خود تعلق دارد.
 
-## ۲. Endpointهای Users
+## Endpointها
 
-| Method | Endpoint | کاربرد | پاسخ موفق |
+| Method | Endpoint | احراز هویت | پاسخ موفق |
 |---|---|---|---|
-| GET | /api/users | دریافت فهرست کاربران | 200 OK |
-| GET | /api/users/{id} | دریافت یک کاربر | 200 OK |
-| POST | /api/users | ساخت کاربر | 201 Created |
-| PUT | /api/users/{id} | جایگزینی اطلاعات کاربر | 200 OK |
-| DELETE | /api/users/{id} | حذف کاربر | 204 No Content |
+| GET | `/health` | خیر | 200 |
+| POST | `/api/auth/register` | خیر | 201 |
+| POST | `/api/auth/login` | خیر | 200 |
+| GET | `/api/auth/me` | Bearer JWT | 200 |
+| GET | `/api/users` | Bearer JWT | 200 |
+| GET | `/api/users/{id}` | Bearer JWT؛ فقط پروفایل خود | 200 |
+| PUT | `/api/users/{id}` | Bearer JWT؛ فقط پروفایل خود | 200 |
+| DELETE | `/api/users/{id}` | Bearer JWT؛ فقط حساب خود | 204 |
+| GET | `/api/tasks` | Bearer JWT | 200 |
+| GET | `/api/tasks/{id}` | Bearer JWT؛ فقط وظیفه خود | 200 |
+| POST | `/api/tasks` | Bearer JWT | 201 |
+| PUT | `/api/tasks/{id}` | Bearer JWT؛ فقط وظیفه خود | 200 |
+| DELETE | `/api/tasks/{id}` | Bearer JWT؛ فقط وظیفه خود | 204 |
+| GET | `/api/tasks/user/{userId}` | Bearer JWT؛ فقط وظایف خود | 200 |
 
-## ۳. Endpointهای Tasks
+## ساخت کاربر
 
-| Method | Endpoint | کاربرد | پاسخ موفق |
-|---|---|---|---|
-| GET | /api/tasks | دریافت فهرست وظایف | 200 OK |
-| GET | /api/tasks/{id} | دریافت یک وظیفه | 200 OK |
-| POST | /api/tasks | ساخت وظیفه | 201 Created |
-| PUT | /api/tasks/{id} | ویرایش کامل وظیفه | 200 OK |
-| DELETE | /api/tasks/{id} | حذف وظیفه | 204 No Content |
-| GET | /api/users/{id}/tasks | دریافت وظایف یک کاربر | 200 OK |
-
-## ۴. کدهای وضعیت HTTP
-
-| Status Code | معنی | موارد استفاده |
-|---|---|---|
-| 200 | OK | دریافت یا ویرایش موفق |
-| 201 | Created | ایجاد موفق منبع |
-| 204 | No Content | حذف موفق بدون بدنه پاسخ |
-| 400 | Bad Request | داده ورودی نامعتبر |
-| 401 | Unauthorized | احراز هویت انجام نشده یا نامعتبر |
-| 403 | Forbidden | نداشتن مجوز دسترسی |
-| 404 | Not Found | کاربر یا وظیفه پیدا نشد |
-| 409 | Conflict | ایمیل تکراری یا تعارض داده |
-| 500 | Internal Server Error | خطای پیش‌بینی‌نشده سرور |
-
-## ۵. نمونه درخواست و پاسخ
-
-### ساخت کاربر
-
-**Request — POST /api/users**
+**POST /api/auth/register**
 
 ~~~json
 {
   "name": "Ali",
   "email": "ali@example.com",
-  "password": "StrongPassword123"
+  "password": "StrongPass123"
 }
 ~~~
 
-**Response — 201 Created**
+پاسخ `201 Created` شامل `user` و `token` است. رمز عبور در پاسخ بازگردانده نمی‌شود. حداقل طول رمز عبور ۸ کاراکتر است.
+
+## ورود
+
+**POST /api/auth/login**
 
 ~~~json
 {
-  "id": 1,
-  "name": "Ali",
-  "email": "ali@example.com"
+  "email": "ali@example.com",
+  "password": "StrongPass123"
 }
 ~~~
 
-رمز عبور خام یا هش آن در پاسخ API برگردانده نمی‌شود.
+پاسخ `200 OK` شامل کاربر عمومی و JWT است.
 
-### ساخت وظیفه
+## ساخت وظیفه
 
-**Request — POST /api/tasks**
+**POST /api/tasks** — نیازمند هدر `Authorization: Bearer <token>`
 
 ~~~json
 {
   "title": "Learn REST API",
-  "description": "Study HTTP methods and status codes",
-  "status": "pending",
-  "userId": 1
+  "description": "Practice endpoints",
+  "status": "pending"
 }
 ~~~
 
-**Response — 201 Created**
+شناسه مالک از JWT گرفته می‌شود و کلاینت نمی‌تواند وظیفه را به کاربر دیگری نسبت دهد.
 
-~~~json
-{
-  "id": 101,
-  "title": "Learn REST API",
-  "description": "Study HTTP methods and status codes",
-  "status": "pending",
-  "userId": 1
-}
-~~~
+وضعیت‌های مجاز: `pending`, `in_progress`, `completed`.
 
-## ۶. قوانین و اعتبارسنجی
+## Status Codeها
 
-- ایمیل هر کاربر باید یکتا و معتبر باشد.
-- فیلدهای name, email, password هنگام ساخت کاربر الزامی‌اند.
-- عنوان وظیفه (title) و userId الزامی‌اند.
-- مقدار status فقط می‌تواند pending, in_progress یا completed باشد.
-- userId باید به کاربر موجود اشاره کند.
-- کاربر فقط مجاز به مشاهده یا تغییر وظایف متعلق به خودش است (مگر نقش مدیریتی تعریف شود).
-- رمز عبور باید با الگوریتم امن و مناسب هش شود.
+| کد | معنی | نمونه |
+|---|---|---|
+| 200 | OK | دریافت یا ویرایش موفق |
+| 201 | Created | ثبت‌نام یا ایجاد وظیفه |
+| 204 | No Content | حذف موفق |
+| 400 | Bad Request | ورودی نامعتبر یا فیلد الزامی مفقود |
+| 401 | Unauthorized | توکن مفقود/نامعتبر یا ورود ناموفق |
+| 403 | Forbidden | تلاش برای دسترسی به منبع کاربر دیگر |
+| 404 | Not Found | کاربر، وظیفه یا مسیر پیدا نشد |
+| 409 | Conflict | ایمیل تکراری |
+| 500 | Internal Server Error | خطای پیش‌بینی‌نشده سرور |
 
-## ۷. رابطه منابع
-
-رابطه‌ی Users و Tasks از نوع **One-to-Many (یک به چند)** است:
-یک User می‌تواند صفر یا چند Task داشته باشد؛ هر Task دقیقاً به یک User تعلق دارد.
+## اعتبارسنجی و امنیت
+- ایمیل باید معتبر و یکتا باشد.
+- رمز عبور با bcrypt هش می‌شود.
+- JWT برای مسیرهای محافظت‌شده لازم است.
+- کاربر فقط وظایف خودش را می‌بیند، ویرایش می‌کند یا حذف می‌کند.
+- حذف کاربر، وظایف او را نیز به‌واسطه کلید خارجی و `ON DELETE CASCADE` حذف می‌کند.
